@@ -36,6 +36,10 @@ while [[ $# -gt 0 ]]; do
             echo "  1. Build binaries for all platforms"
             echo "  2. Create a git tag with the specified version"
             echo "  3. Push the tag to trigger GitHub Actions release"
+            echo ""
+            echo "Note: You must create a release manually on GitHub first!"
+            echo "   - Go to: https://github.com/ahnopologetic/switchssh/releases"
+            echo "   - Create a new release with the same tag name"
             exit 0
             ;;
         *)
@@ -99,5 +103,6 @@ print_status "Pushing tag to remote..."
 git push origin $VERSION
 
 print_success "Release $VERSION created successfully!"
-print_status "GitHub Actions will now build and create the release automatically."
+print_status "GitHub Actions will now build binaries and attach them to the existing release."
 print_status "You can monitor the progress at: https://github.com/ahnopologetic/switchssh/actions"
+print_warning "Note: Make sure you've created a release manually on GitHub for tag $VERSION first!"

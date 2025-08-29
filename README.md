@@ -194,28 +194,33 @@ go build -o switchssh main.go
 ### Creating a Release
 
 1. **Update version** and commit changes
-2. **Use the release script** (recommended):
+2. **Create a release manually** on GitHub:
+   - Go to the [Releases page](https://github.com/ahnopologetic/switchssh/releases)
+   - Click "Create a new release"
+   - Choose a tag (e.g., `v1.0.0`) or create a new one
+   - Add release notes and publish the release
+3. **Push the tag** to trigger the build:
    ```bash
+   # Use the release script (recommended)
    ./scripts/release.sh v1.0.0
-   ```
    
-   Or manually create and push a tag:
-   ```bash
+   # Or manually
    git tag v1.0.0
    git push origin v1.0.0
    ```
-3. **GitHub Actions** will automatically:
+4. **GitHub Actions** will automatically:
    - Build binaries for all platforms
-   - Create a release with the tag
+   - Find the existing release with the matching tag
    - Attach all binary files to the release
 
 ### Release Workflow
 
-The project uses GitHub Actions to automatically build and release binaries when you push a semantic versioned tag (e.g., `v1.0.0`). The workflow:
+The project uses GitHub Actions to automatically build and attach binaries to existing releases when you push a semantic versioned tag (e.g., `v1.0.0`). The workflow:
 
 - Builds for: Linux (amd64, arm64), macOS (amd64, arm64), Windows (amd64)
 - Creates optimized binaries with stripped symbols
-- Attaches all binaries to the GitHub release
+- Finds the existing release with the matching tag
+- Attaches all binaries to the existing GitHub release
 
 ## Future Improvements
 

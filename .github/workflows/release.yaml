@@ -60,63 +60,45 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+      - name: Get Release
+        id: get_release
+        run: |
+          # Extract tag name from github.ref (remove 'refs/tags/' prefix)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          
+          # Get the release ID for the tag
+          RELEASE_ID=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME" \
+            | jq -r '.id')
+          
+          if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
+            echo "Error: No release found for tag $TAG_NAME"
+            echo "Please create a release manually for this tag first"
+            exit 1
+          fi
+          
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          echo "Found existing release with ID: $RELEASE_ID"
 
       - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./switchssh-linux-amd64
-          asset_name: switchssh-linux-amd64
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./switchssh-linux-arm64
-          asset_name: switchssh-linux-arm64
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./switchssh-darwin-amd64
-          asset_name: switchssh-darwin-amd64
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./switchssh-darwin-arm64
-          asset_name: switchssh-darwin-arm64
-          asset_content_type: application/octet-stream
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./switchssh-windows-amd64.exe
-          asset_name: switchssh-windows-amd64.exe
-          asset_content_type: application/octet-stream
+        run: |
+          # Extract tag name from github.ref (remove 'refs/tags/' prefix)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          
+          # Upload each binary to the existing release
+          for binary in switchssh-linux-amd64 switchssh-linux-arm64 switchssh-darwin-amd64 switchssh-darwin-arm64 switchssh-windows-amd64.exe; do
+            if [ -f "$binary" ]; then
+              echo "Uploading $binary..."
+              curl -s \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary "@$binary" \
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets?name=$binary"
+              echo "Uploaded $binary successfully"
+            else
+              echo "Warning: $binary not found, skipping upload"
+            fi
+          done
