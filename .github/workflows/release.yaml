@@ -57,8 +57,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download Linux AMD64
         uses: actions/download-artifact@v4
+        with:
+          name: switchssh-linux-amd64
+          path: .
+
+      - name: Download Linux ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: switchssh-linux-arm64
+          path: .
+
+      - name: Download Darwin AMD64
+        uses: actions/download-artifact@v4
+        with:
+          name: switchssh-darwin-amd64
+          path: .
+
+      - name: Download Darwin ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: switchssh-darwin-arm64
+          path: .
+
+      - name: Download Windows AMD64
+        uses: actions/download-artifact@v4
+        with:
+          name: switchssh-windows-amd64.exe
+          path: .
+
+      - name: List downloaded files
+        run: |
+          echo "Checking for downloaded binaries..."
+          ls -la switchssh-* || echo "No switchssh binaries found"
+          echo "Current directory contents:"
+          ls -la
 
       - name: Get Release
         id: get_release
@@ -87,18 +121,29 @@ jobs:
           # Extract tag name from github.ref (remove 'refs/tags/' prefix)
           TAG_NAME=${GITHUB_REF#refs/tags/}
           
+          echo "Starting upload process..."
+          echo "Release ID: ${{ steps.get_release.outputs.release_id }}"
+          
           # Upload each binary to the existing release
           for binary in switchssh-linux-amd64 switchssh-linux-arm64 switchssh-darwin-amd64 switchssh-darwin-arm64 switchssh-windows-amd64.exe; do
             if [ -f "$binary" ]; then
-              echo "Uploading $binary..."
-              curl -s \
+              echo "Uploading $binary (size: $(stat -c%s "$binary" 2>/dev/null || stat -f%z "$binary" 2>/dev/null || echo "unknown") bytes)..."
+              response=$(curl -s -w "%{http_code}" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                 -H "Accept: application/vnd.github.v3+json" \
                 -H "Content-Type: application/octet-stream" \
                 --data-binary "@$binary" \
-                "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets?name=$binary"
-              echo "Uploaded $binary successfully"
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.get_release.outputs.release_id }}/assets?name=$binary")
+              
+              http_code="${response: -3}"
+              response_body="${response%???}"
+              
+              if [ "$http_code" = "201" ]; then
+                echo "✅ Uploaded $binary successfully"
+              else
+                echo "❌ Failed to upload $binary (HTTP $http_code): $response_body"
+              fi
             else
-              echo "Warning: $binary not found, skipping upload"
+              echo "⚠️  Warning: $binary not found, skipping upload"
             fi
           done
