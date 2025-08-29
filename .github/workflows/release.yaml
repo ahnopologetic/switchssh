@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+  actions: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -99,20 +102,20 @@ jobs:
         run: |
           # Extract tag name from github.ref (remove 'refs/tags/' prefix)
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          
+
           # Get the release ID for the tag
           RELEASE_ID=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME" \
             | jq -r '.id')
-          
+
           if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
             echo "Error: No release found for tag $TAG_NAME"
             echo "Please create a release manually for this tag first"
             exit 1
           fi
-          
+
           echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
           echo "Found existing release with ID: $RELEASE_ID"
 
@@ -120,10 +123,10 @@ jobs:
         run: |
           # Extract tag name from github.ref (remove 'refs/tags/' prefix)
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          
+
           echo "Starting upload process..."
           echo "Release ID: ${{ steps.get_release.outputs.release_id }}"
-          
+
           # Upload each binary to the existing release
           for binary in switchssh-linux-amd64 switchssh-linux-arm64 switchssh-darwin-amd64 switchssh-darwin-arm64 switchssh-windows-amd64.exe; do
             if [ -f "$binary" ]; then
